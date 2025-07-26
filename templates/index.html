@@ -45,16 +45,36 @@
       border-radius: 10px;
       text-align: center;
     }
+    .defaults {
+      margin-bottom: 20px;
+      background: #f7f7f7;
+      padding: 10px;
+      border: 1px dashed #ccc;
+      border-radius: 10px;
+    }
   </style>
 </head>
 <body>
   <h2>PDF Trimmer</h2>
+
   <form id="pdfForm" method="post" enctype="multipart/form-data">
+    <div class="defaults">
+      <h3>Global Default Settings</h3>
+      <label>Default Remove First Pages:
+        <input type="number" id="defaultRemoveFirst" value="0" min="0" />
+      </label>
+      <label style="margin-left: 20px;">Default Remove Last Pages:
+        <input type="number" id="defaultRemoveLast" value="0" min="0" />
+      </label>
+    </div>
+
     <div class="upload-box" id="dropArea">
       <input type="file" name="pdfs" id="pdfInput" multiple accept="application/pdf" style="display: none;" />
       <p>Drag and drop PDFs here or click to upload</p>
     </div>
+
     <div id="fileContainer"></div>
+
     <button type="submit">Trim and Merge PDFs</button>
   </form>
 
@@ -77,6 +97,9 @@
     fileInput.onchange = () => handleFiles(fileInput.files);
 
     function handleFiles(files) {
+      const defaultFirst = parseInt(document.getElementById('defaultRemoveFirst').value) || 0;
+      const defaultLast = parseInt(document.getElementById('defaultRemoveLast').value) || 0;
+
       [...files].forEach((file, idx) => {
         const reader = new FileReader();
         const id = `file_${Date.now()}_${idx}`;
@@ -89,8 +112,12 @@
         infoDiv.innerHTML = `
           <p><strong>${file.name}</strong></p>
           <p>Page Count: <span class="page-count">Loading...</span></p>
-          <label>Remove First Pages: <input type="number" name="remove_first_${id}" value="0" min="0"></label><br>
-          <label>Remove Last Pages: <input type="number" name="remove_last_${id}" value="0" min="0"></label>
+          <label>Remove First Pages:
+            <input type="number" name="remove_first_${id}" value="${defaultFirst}" min="0">
+          </label><br>
+          <label>Remove Last Pages:
+            <input type="number" name="remove_last_${id}" value="${defaultLast}" min="0">
+          </label>
           <input type="hidden" name="file_ids" value="${id}">
         `;
 
