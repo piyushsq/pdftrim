@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PDF Trimmer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .file-section {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 40px;
+      gap: 20px;
+      border: 1px solid #ccc;
+      padding: 15px;
+      border-radius: 10px;
+    }
+    .info-section {
+      flex: 1;
+    }
+    .preview-section {
+      flex-shrink: 0;
+      width: 300px;
+      height: 390px;
+      overflow: auto;
+      border-left: 1px solid #ddd;
+      padding-left: 20px;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      margin-bottom: 20px;
+    }
+    .upload-box {
+      margin-bottom: 20px;
+      border: 2px dashed #aaa;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>PDF Trimmer</h2>
+  <form id="pdfForm" method="post" enctype="multipart/form-data">
+    <div class="upload-box" id="dropArea">
+      <input type="file" name="pdfs" id="pdfInput" multiple accept="application/pdf" style="display: none;" />
+      <p>Drag and drop PDFs here or click to upload</p>
+    </div>
+    <div id="fileContainer"></div>
+    <button type="submit">Trim and Merge PDFs</button>
+  </form>
+
+  <script>
+    const dropArea = document.getElementById('dropArea');
+    const fileInput = document.getElementById('pdfInput');
+    const fileContainer = document.getElementById('fileContainer');
+
+    dropArea.onclick = () => fileInput.click();
+    dropArea.ondragover = (e) => {
+      e.preventDefault();
+      dropArea.style.borderColor = 'green';
+    };
+    dropArea.ondragleave = () => dropArea.style.borderColor = '#aaa';
+    dropArea.ondrop = (e) => {
+      e.preventDefault();
+      dropArea.style.borderColor = '#aaa';
+      handleFiles(e.dataTransfer.files);
+    };
+    fileInput.onchange = () => handleFiles(fileInput.files);
+
+    function handleFiles(files) {
+      [...files].forEach((file, idx) => {
+        const reader = new FileReader();
+        const id = `file_${Date.now()}_${idx}`;
+        const section = document.createElement('div');
+        section.className = 'file-section';
+        section.id = id;
+
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'info-section';
+        infoDiv.innerHTML = `
+          <p><strong>${file.name}</strong></p>
+          <p>Page Count: <span class="page-count">Loading...</span></p>
+          <label>Remove First Pages: <input type="number" name="remove_first_${id}" value="0" min="0"></label><br>
+          <label>Remove Last Pages: <input type="number" name="remove_last_${id}" value="0" min="0"></label>
+          <input type="hidden" name="file_ids" value="${id}">
+        `;
+
+        const previewDiv = document.createElement('div');
+        previewDiv.className = 'preview-section';
+        previewDiv.id = `preview_${id}`;
+
+        section.appendChild(infoDiv);
+        section.appendChild(previewDiv);
+        fileContainer.appendChild(section);
+
+        reader.onload = function () {
+          const typedarray = new Uint8Array(reader.result);
+          pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+            infoDiv.querySelector('.page-count').textContent = pdf.numPages;
+
+            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+              pdf.getPage(pageNum).then(page => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                const scale = 0.8;
+                const viewport = page.getViewport({ scale });
+
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                page.render({ canvasContext: ctx, viewport }).promise.then(() => {
+                  previewDiv.appendChild(canvas);
+                });
+              });
+            }
+          });
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+  </script>
+</body>
+</html>
